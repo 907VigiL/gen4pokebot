@@ -1,6 +1,5 @@
---Joseph Keller's Pokemon Gen4/5 PokeStats Display LUA script
---Based of a lua script by MKDasher
---Requires display 4.0.1 or higher.
+--A cut down version of Joseph Keller's Pokemon Gen4/5 PokeStats Display LUA script Based of a lua script by MKDasher
+
 local utils = {}
 
 function utils.translatePath(path)
@@ -9,7 +8,7 @@ function utils.translatePath(path)
     return pathTranslated == nil and path or pathTranslated
 end
 
-dofile(utils.translatePath("lua\\Memory.lua"))
+dofile(utils.translatePath("Memory.lua"))
 
 require "include"
 
