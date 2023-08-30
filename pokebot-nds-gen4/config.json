@@ -1,0 +1,47 @@
+{
+	"target_traits": {
+		"shiny": true
+	},
+	"pokeball_override": {
+		"Repeat Ball": {
+			"species": [
+				"Lillipup",
+				"Patrat"
+			]
+		},
+		"Net Ball": {
+			"type": [
+				"Bug",
+				"Water"
+			]
+		}
+	},
+	"pokeball_priority": [
+		"Premier Ball",
+		"Ultra Ball",
+		"Great Ball",
+		"Poke Ball"
+	],
+	"move_direction": "Vertical",
+	"thief_wild_items": false,
+	"pickup": false,
+	"starter0": false,
+	"starter1": true,
+	"starter2": false,
+	"save_game_on_start": false,
+	"save_game_after_catch": true,
+	"pickup_threshold": "3",
+	"hax": false,
+	"cycle_lead_pokemon": false,
+	"encounter_log_limit": "30",
+	"battle_non_targets": false,
+	"auto_catch": false,
+	"mode": "starters",
+	"target_log_limit": "30",
+	"inactive_client_timeout": "2500",
+	"game_refresh_cooldown": "200",
+	"inflict_status": false,
+	"false_swipe": false,
+	"debug": true,
+	"editing": "0"
+}
