@@ -15,6 +15,41 @@ function update_pointers()
     -- console.log(string.format("%08X", offset.map_header))
 end
 
+-----------------------
+-- MISC. BOT ACTIONS
+-----------------------
+
+function save_game()
+    console.log("Saving game...")
+    press_sequence("X", 30)
+
+    -- SAVE button is at a different position before choosing starter
+    if #party == 0 then                         -- No starter, no dex
+        touch_screen_at(60, 93)
+    elseif mword(offset.map_header) == 391 then -- No dex (not a perfect fix)
+        touch_screen_at(188, 88)
+    else                                        -- Standard
+        touch_screen_at(60, 143)
+    end
+
+    wait_frames(90)
+
+    touch_screen_at(218, 60)
+    wait_frames(120)
+
+    while mbyte(offset.save_indicator) ~= 0 do
+        press_sequence("A", 12)
+    end
+
+    client.saveram() -- Flush save ram to the disk	
+
+    press_sequence("B", 10)
+end
+
+-----------------------
+-- BATTLE BOT ACTIONS
+-----------------------
+
 function flee_battle()
     while game_state.in_battle do
         touch_screen_at(125, 175) -- Run
@@ -22,10 +57,70 @@ function flee_battle()
     end
 end
 
-function catch_pokemon()
-    if not config.auto_catch then
-        pause_bot("Wild Pokemon meets target specs!")
+function do_battle()
+    local best_move = pokemon.find_best_move(party[1], foe[1])
+
+    if best_move then
+        -- Press B until battle state has advanced
+        local battle_state = 0
+
+        while game_state.in_battle and battle_state == 0 do
+            press_sequence("B", 5)
+            battle_state = mbyte(offset.battle_menu_state)
+        end
+
+        --if not game_state.in_battle then -- Battle over
+        if party[1].current_hp == 0 or foe[1].current_hp == 0 then --if battle over
+            press_sequence("B", 5)                                 -- RUN or KEEP OLD MOVES
+            wait_frames(30)
+            return
+            --[[elseif battle_state == 4 then -- Fainted or learning new move
+            wait_frames(30)
+            touch_screen_at(128, 100) -- RUN or KEEP OLD MOVES
+            wait_frames(140)
+            touch_screen_at(128, 50)  -- FORGET or nothing if fainted
+
+            while game_state.in_battle do
+                press_sequence("B", 5)
+            end
+            return]]
+        end
+
+        if best_move.power > 0 then
+            -- Manually decrement PP count
+            -- The game only updates this itself at the end of the battle
+            local pp_dec = 1
+            if foe[1].ability == "Pressure" then
+                pp_dec = 2
+            end
+
+            party[1].pp[best_move.index] = party[1].pp[best_move.index] - pp_dec
+
+            console.debug("Best move against foe is " ..
+                best_move.name .. " (Effective base power is " .. best_move.power .. ")")
+            wait_frames(30)
+            touch_screen_at(128, 90) -- FIGHT
+            wait_frames(30)
+
+            touch_screen_at(80 * ((best_move.index - 1) % 2 + 1), 50 * (((best_move.index - 1) // 2) + 1)) -- Select move slot
+            wait_frames(30)
+        else
+            console.log("Lead Pokemon has no valid moves left to battle! Fleeing...")
+
+            while game_state.in_battle do
+                touch_screen_at(125, 175) -- Run
+                wait_frames(5)
+            end
+        end
+        do_battle()
     else
+        -- Wait another frame for valid battle data
+        wait_frames(1)
+    end
+end
+
+function catch_pokemon()
+    if config.auto_catch then
         console.log("Attempting to catch pokemon now...")
         wait_frames(900)
         touch_screen_at(40, 170)
@@ -43,6 +138,8 @@ function catch_pokemon()
             console.log("Failed catch trying again...")
             catch_pokemon()
         end
+    else
+        pause_bot("Wild Pokemon meets target specs!")
     end
 end
 
@@ -66,9 +163,15 @@ function process_wild_encounter()
         console.log("Wild " .. foe[1].name .. " was a target!!! Catching Now")
         catch_pokemon()
     else
-        console.log("Wild " .. foe[1].name .. " was not a target, fleeing!")
-
-        flee_battle()
+        while game_state.in_battle do
+            if config.battle_non_targets then
+                console.log("Wild " .. foe[1].name .. " was not a target, and battle non tartgets is on. Battling!")
+                do_battle()
+            else
+                console.log("Wild " .. foe[1].name .. " was not a target, fleeing!")
+                flee_battle()
+            end
+        end
     end
 end
 
@@ -128,10 +231,10 @@ function mode_starters_DP(starter)
     end
 end
 
-function mode_starters(starter) --starters for platinum
-    local selected_starter = mdword(0x2101DEC) + 0x203E8
-    local starters_ready = selected_starter + 0x84
-    console.log("selected_starter: " .. selected_starter) 
+function mode_starters(starter)                          --starters for platinum
+    local selected_starter = mdword(0x2101DEC) + 0x203E8 -- 0: Turtwig, 1: Chimchar, 2: Piplup
+    local starters_ready = selected_starter + 0x84       -- 0 before hand appears, A94D afterwards
+    console.log("selected_starter: " .. selected_starter)
     console.log("starters_ready: " .. starters_ready)
     if not game_state.in_game then
         console.log("Waiting to reach overworld...")
@@ -161,7 +264,8 @@ function mode_starters(starter) --starters for platinum
             console.log("starter ready value: " .. offset.starters_ready)
             break
         end
-    end]]--
+    end]]
+    --
 
     -- Need to wait for hand to be visible to find offset
     console.log("Selecting starter...")
