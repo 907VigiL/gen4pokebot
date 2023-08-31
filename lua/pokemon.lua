@@ -537,10 +537,14 @@ function pokemon.matches_ruleset(mon, target)
 
     if target.iv_sum then
         has_other_specs = true
-
-        if sum < target.iv_sum then
-            console.debug("Mon IV sum of " .. sum .. " does not meet threshold " .. target.iv_sum)
-            return false
+        for i = 1, #target.iv_sum, 1 do
+            if sum == target.iv_sum[i] then
+                console.debug("Mon IV sum of " .. sum .. " meets a value!! " .. target.iv_sum[i])
+                return true
+            else
+                console.debug("Mon IV sum of " .. sum .. " does not meet any values set... ")
+                return false
+            end
         end
     end
 

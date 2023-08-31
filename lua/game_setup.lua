@@ -49,9 +49,9 @@ local function get_offset_pt()
 
     --offset.selected_starter = 0x022BF93C --0x022BFA1C --0x022BF9AC -- 0: Turtwig, 1: Chimchar, 2: Piplup
     --offset.starters_ready = offset.selected_starter + 0x84 -- 0 before hand appears, A94D afterwards
-
-    offset.starters_ready = 0x02FFFFFF
-    offset.selected_starter = 0x02FFFFFF
+ 
+    offset.selected_starter = mdword(0x2101DEC) + 0x203E8
+    offset.starters_ready = offset.selected_starter + 0x84
     --[[for i = 0x022BF900, 0x022BFA9E, 0x04 do
         if mdword(i) == 0xA94D then
             offset.starters_ready = i

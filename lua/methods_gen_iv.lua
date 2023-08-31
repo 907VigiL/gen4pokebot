@@ -23,7 +23,7 @@ function flee_battle()
 end
 
 function catch_pokemon()
-    if config.auto_catch then
+    if not config.auto_catch then
         pause_bot("Wild Pokemon meets target specs!")
     else
         console.log("Attempting to catch pokemon now...")
@@ -40,7 +40,7 @@ function catch_pokemon()
             console.log("Pokemon caught!!!")
             skip_nickname()
         else
-            console.log("Faile catch trying again...")
+            console.log("Failed catch trying again...")
             catch_pokemon()
         end
     end
@@ -128,7 +128,11 @@ function mode_starters_DP(starter)
     end
 end
 
-function mode_starters(starter)
+function mode_starters(starter) --starters for platinum
+    local selected_starter = mdword(0x2101DEC) + 0x203E8
+    local starters_ready = selected_starter + 0x84
+    console.log("selected_starter: " .. selected_starter) 
+    console.log("starters_ready: " .. starters_ready)
     if not game_state.in_game then
         console.log("Waiting to reach overworld...")
 
@@ -144,12 +148,12 @@ function mode_starters(starter)
     -- Open briefcase and skip through dialogue until starter select
     console.log("Skipping dialogue to briefcase")
 
-    for j = 0, 21, 1 do
-        skip_dialogue()
+    while not (mdword(starters_ready) > 0) do
+        press_button("B")
+        wait_frames(2)
     end
-    wait_frames(120)
-    console.log("Starting to find offsets")
-    for i = 0x022BF900, 0x022BFA9E, 0x02 do
+
+    --[[for i = 0x022BF900, 0x022BFA9E, 0x02 do
         --console.log("i = " .. i)
         --console.log("word at i = " .. mword(i))
         if mword(i) == 0xA94D then
@@ -157,16 +161,13 @@ function mode_starters(starter)
             console.log("starter ready value: " .. offset.starters_ready)
             break
         end
-    end
-
-    offset.selected_starter = offset.starters_ready - 0x84
-    console.log("selected_starter: " .. offset.selected_starter)
+    end]]--
 
     -- Need to wait for hand to be visible to find offset
     console.log("Selecting starter...")
 
     -- Highlight and select target
-    while mdword(offset.selected_starter) < starter do
+    while mdword(selected_starter) < starter do
         press_sequence("Right", 10)
     end
 
