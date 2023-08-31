@@ -47,18 +47,9 @@ local function get_offset_pt()
 
     offset.battle_indicator = 0x021D18F2
 
-    --offset.selected_starter = 0x022BF93C --0x022BFA1C --0x022BF9AC -- 0: Turtwig, 1: Chimchar, 2: Piplup
-    --offset.starters_ready = offset.selected_starter + 0x84 -- 0 before hand appears, A94D afterwards
- 
     offset.selected_starter = mdword(0x2101DEC) + 0x203E8
     offset.starters_ready = offset.selected_starter + 0x84
-    --[[for i = 0x022BF900, 0x022BFA9E, 0x04 do
-        if mdword(i) == 0xA94D then
-            offset.starters_ready = i
-            break
-        end
-    end
-    offset.selected_starter = offset.starters_ready - 0x84--]]
+    --offset.battle_menu_state = 0x0236F793 -- 1 on FIGHT menu (sometimes 0), 2 on move select, 4 on switch/run after faint, 0 otherwise --2E FIGHT MENU, 2F move select BB on switch/run after fainted
 
     return offset
 end
@@ -108,7 +99,7 @@ local function get_offset_bw(game)
         -- 80 = Flags
 
         -- instances separated by 0x1B4D0 bytes
-        -- nuvema_1 	= 0x2C4670, -- when exiting cheren's house
+        -- nuvema_1 	= 0x2C4670, -- when exiting cheren's house --2D6B04 - 26ACE6
         -- nuvema_2		= 0x2DFB38, -- when exiting bianca's house
         -- nuvema_3 	= 0x2FB008, -- when loaded normally
         -- nuvema_4 	= 0x3164D0, -- when exiting home or juniper's lab or flying
