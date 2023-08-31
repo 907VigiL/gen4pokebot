@@ -448,10 +448,10 @@ function pokemon.matches_ruleset(mon, target)
     if target.species then
         has_other_specs = true
         local is_species = false
-        --console.log("Targets:" .. target.species[1] .. " " .. target.species[2])
         for i = 1, #target.species, 1 do
             if string.lower(mon.name) == string.lower(target.species[i]) then
                 is_species = true
+                console.log("Species is true")
                 break
             end
         end
@@ -540,7 +540,7 @@ function pokemon.matches_ruleset(mon, target)
         for i = 1, #target.iv_sum, 1 do
             if sum == target.iv_sum[i] then
                 console.debug("Mon IV sum of " .. sum .. " meets a value!! " .. target.iv_sum[i])
-                return true
+                break
             else
                 console.debug("Mon IV sum of " .. sum .. " does not meet any values set... ")
                 return false
@@ -585,8 +585,9 @@ function pokemon.matches_ruleset(mon, target)
             return false
         end
     end
-
-    if has_other_specs and not target.shiny then
+    console.log(has_other_specs)
+    console.log(not target.shiny)
+    if has_other_specs then --remove the "and not target.shiny" if you want to hunt for pokemon that still meet other target values and arent shiny
         console.log("Wild " .. mon.name .. " is a target!")
         return true
     else
