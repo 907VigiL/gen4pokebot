@@ -9,10 +9,12 @@ function update_pointers()
     offset.trainer_x = offset.map_header + 4 + 2
     offset.trainer_y = offset.map_header + 12 + 2
     offset.trainer_z = offset.map_header + 8 + 2
+    local mem_shift = mdword(0x21C0794)
+    offset.battle_state = mem_shift + 0x44878
     -- console.log()
     -- offset.trainer_x =
 
-    -- console.log(string.format("%08X", offset.map_header))
+    --console.log(string.format("%08X", offset.battle_state))
 end
 
 -----------------------
@@ -21,29 +23,52 @@ end
 
 function save_game()
     console.log("Saving game...")
-    press_sequence("X", 30)
+    hold_button("X")
+    wait_frames(20)
+    release_button("X")
 
     -- SAVE button is at a different position before choosing starter
-    if #party == 0 then                         -- No starter, no dex
+    --[[if #party == 0 then                         -- No starter, no dex
         touch_screen_at(60, 93)
     elseif mword(offset.map_header) == 391 then -- No dex (not a perfect fix)
         touch_screen_at(188, 88)
     else                                        -- Standard
         touch_screen_at(60, 143)
-    end
+    end]]
+    press_sequence("A", 10)
+    console.log("Pressing A")
+    hold_button("B")
+    console.log("Holding B")
+    wait_frames(100)
+    release_button("B")
+    press_button("A")
+    console.log("Pressing A")
+    wait_frames(30)
+    hold_button("B")
+    console.log("Holding B")
+    wait_frames(100)
+    release_button("B")
+    console.log("Starting to save")
+    press_sequence("A", 800)
 
-    wait_frames(90)
+    --touch_screen_at(218, 60)
 
-    touch_screen_at(218, 60)
-    wait_frames(120)
-
-    while mbyte(offset.save_indicator) ~= 0 do
-        press_sequence("A", 12)
-    end
-
+    --while mbyte(offset.save_indicator) ~= 0 do
+      --  press_sequence("A", 12)
+    --end
+    console.log("Saving ram")
     client.saveram() -- Flush save ram to the disk	
-
+    
     press_sequence("B", 10)
+end
+
+function skip_nickname()
+    while game_state.in_battle do
+        touch_screen_at(125, 140)
+        wait_frames(20)
+    end
+    wait_frames(150)
+    save_game()
 end
 
 -----------------------
@@ -63,27 +88,33 @@ function do_battle()
     if best_move then
         -- Press B until battle state has advanced
         local battle_state = 0
-
         while game_state.in_battle and battle_state == 0 do
             press_sequence("B", 5)
-            battle_state = mbyte(offset.battle_menu_state)
+            battle_state = mbyte(offset.battle_state) --should set to 01 
         end
 
-        --if not game_state.in_battle then -- Battle over
-        if party[1].current_hp == 0 or foe[1].current_hp == 0 then --if battle over
-            press_sequence("B", 5)                                 -- RUN or KEEP OLD MOVES
-            wait_frames(30)
+        console.log("Battle Menu State in loop: " .. battle_state)
+        console.log("My current pokemon HP: " ..  mword(offset.current_pokemon + 0x4C))
+        if not game_state.in_battle then -- Battle over
+        --console.log("Current Party HP: " .. party[1].current_hp)
+        --console.log("Current For HP: " .. foe[1].current_hp)
+        --if party[1].current_hp == 0 or foe[1].current_hp == 0 then --if battle over
+            --touch_screen_at(125, 175) -- Run or keep old moves
+            --wait_frames(20)
             return
-            --[[elseif battle_state == 4 then -- Fainted or learning new move
-            wait_frames(30)
-            touch_screen_at(128, 100) -- RUN or KEEP OLD MOVES
-            wait_frames(140)
-            touch_screen_at(128, 50)  -- FORGET or nothing if fainted
-
+        elseif mword(offset.current_pokemon + 0x4C) == 0 then -- Fainted or learning new move
+            console.log("Pokemon fainted or is learning new moves skipping text...")
             while game_state.in_battle do
+                wait_frames(400)
+                touch_screen_at(125, 135) -- RUN or KEEP OLD MOVES
+                wait_frames(300)
+                if game_state.in_battle then --if hit with can't flee message
+                    console.log("Could not flee battle reseting...")
+                    press_button("Power")
+                end
                 press_sequence("B", 5)
             end
-            return]]
+            return
         end
 
         if best_move.power > 0 then
@@ -108,11 +139,11 @@ function do_battle()
             console.log("Lead Pokemon has no valid moves left to battle! Fleeing...")
 
             while game_state.in_battle do
-                touch_screen_at(125, 175) -- Run
+                touch_screen_at(125, 135) -- Run
                 wait_frames(5)
             end
         end
-        do_battle()
+        --do_battle()
     else
         -- Wait another frame for valid battle data
         wait_frames(1)
@@ -122,7 +153,13 @@ end
 function catch_pokemon()
     if config.auto_catch then
         console.log("Attempting to catch pokemon now...")
-        wait_frames(900)
+        local battle_state = 0
+        while game_state.in_battle and battle_state == 0 do
+            press_sequence("B", 5)
+            battle_state = mbyte(offset.battle_state) --should set to 01 
+        end
+        ::retry::
+        wait_frames(100)
         touch_screen_at(40, 170)
         wait_frames(50)
         touch_screen_at(190, 45)
@@ -136,19 +173,13 @@ function catch_pokemon()
             skip_nickname()
         else
             console.log("Failed catch trying again...")
-            catch_pokemon()
+            goto retry
         end
     else
         pause_bot("Wild Pokemon meets target specs!")
     end
 end
 
-function skip_nickname()
-    while game_state.in_battle do
-        touch_screen_at(125, 140)
-        wait_frames(20)
-    end
-end
 
 function process_wild_encounter()
     -- Check all foes in case of a double battle in Eterna Forest
@@ -313,9 +344,9 @@ function mode_random_encounters()
         hold_button(dir1)
         wait_frames(tile_frames)
         release_button(dir1)
-        release_button("B")
-
-        hold_button("B")
+        --release_button("B")
+        press_button("A")
+        --hold_button("B")
         hold_button(dir2)
         wait_frames(tile_frames)
         release_button(dir2)

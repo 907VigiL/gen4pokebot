@@ -49,6 +49,7 @@ local function get_offset_pt()
 
     offset.selected_starter = mdword(0x2101DEC) + 0x203E8
     offset.starters_ready = offset.selected_starter + 0x84
+    --offset.battle_menu_state = mbyte(0x21C0794) + 0x44878
     --offset.battle_menu_state = 0x0236F793 -- 1 on FIGHT menu (sometimes 0), 2 on move select, 4 on switch/run after faint, 0 otherwise --2E FIGHT MENU, 2F move select BB on switch/run after fainted
 
     return offset
