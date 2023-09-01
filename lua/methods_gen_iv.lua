@@ -26,7 +26,17 @@ function save_game()
     hold_button("X")
     wait_frames(20)
     release_button("X")
-
+    console.log("Starting Map Check...")
+    if mword(offset.map_header) == 0156 then -- No dex (not a perfect fix)
+        while mbyte(0x021C4C86) ~= 04 do
+            press_sequence("Up", 10)
+        end
+    else
+        console.log("Not on first route...")
+        while mbyte(0x021C4C86) ~= 07 do
+            press_sequence("Up", 10)
+        end
+    end
     -- SAVE button is at a different position before choosing starter
     --[[if #party == 0 then                         -- No starter, no dex
         touch_screen_at(60, 93)
@@ -54,11 +64,11 @@ function save_game()
     --touch_screen_at(218, 60)
 
     --while mbyte(offset.save_indicator) ~= 0 do
-      --  press_sequence("A", 12)
+    --  press_sequence("A", 12)
     --end
     console.log("Saving ram")
     client.saveram() -- Flush save ram to the disk	
-    
+
     press_sequence("B", 10)
 end
 
@@ -90,15 +100,15 @@ function do_battle()
         local battle_state = 0
         while game_state.in_battle and battle_state == 0 do
             press_sequence("B", 5)
-            battle_state = mbyte(offset.battle_state) --should set to 01 
+            battle_state = mbyte(offset.battle_state) --should set to 01
         end
 
         console.log("Battle Menu State in loop: " .. battle_state)
-        console.log("My current pokemon HP: " ..  mword(offset.current_pokemon + 0x4C))
+        console.log("My current pokemon HP: " .. mword(offset.current_pokemon + 0x4C))
         if not game_state.in_battle then -- Battle over
-        --console.log("Current Party HP: " .. party[1].current_hp)
-        --console.log("Current For HP: " .. foe[1].current_hp)
-        --if party[1].current_hp == 0 or foe[1].current_hp == 0 then --if battle over
+            --console.log("Current Party HP: " .. party[1].current_hp)
+            --console.log("Current For HP: " .. foe[1].current_hp)
+            --if party[1].current_hp == 0 or foe[1].current_hp == 0 then --if battle over
             --touch_screen_at(125, 175) -- Run or keep old moves
             --wait_frames(20)
             return
@@ -106,7 +116,7 @@ function do_battle()
             console.log("Pokemon fainted or is learning new moves skipping text...")
             while game_state.in_battle do
                 wait_frames(400)
-                touch_screen_at(125, 135) -- RUN or KEEP OLD MOVES
+                touch_screen_at(125, 135)    -- RUN or KEEP OLD MOVES
                 wait_frames(300)
                 if game_state.in_battle then --if hit with can't flee message
                     console.log("Could not flee battle reseting...")
@@ -156,7 +166,7 @@ function catch_pokemon()
         local battle_state = 0
         while game_state.in_battle and battle_state == 0 do
             press_sequence("B", 5)
-            battle_state = mbyte(offset.battle_state) --should set to 01 
+            battle_state = mbyte(offset.battle_state) --should set to 01
         end
         ::retry::
         wait_frames(100)
@@ -179,7 +189,6 @@ function catch_pokemon()
         pause_bot("Wild Pokemon meets target specs!")
     end
 end
-
 
 function process_wild_encounter()
     -- Check all foes in case of a double battle in Eterna Forest
@@ -207,7 +216,7 @@ function process_wild_encounter()
 end
 
 -----------------------
--- BOT MODES
+-- BOT ENCOUNTER MODES
 -----------------------
 
 function mode_starters_DP(starter)
@@ -310,29 +319,40 @@ function mode_starters(starter)                          --starters for platinum
         press_sequence("A", 6)
     end
 
-    if not config.hax then
-        console.log("Waiting to see starter...")
-
-        for i = 0, 86, 1 do
-            press_button("A")
-            clear_unheld_inputs()
-            wait_frames(6)
+    console.log("Waiting to see starter...")
+    if config.hax then
+        mon = party[1]
+        local was_target = pokemon.log(mon)
+        if was_target then
+            pause_bot("Starter meets target specs!")
+        else
+            press_button("Power")
         end
-    end
-
-    mon = party[1]
-    local was_target = pokemon.log(mon)
-
-    if was_target then
-        pause_bot("Starter meets target specs!")
     else
-        console.log("Starter was not a target, resetting...")
-        press_button("Power")
-        wait_frames(180)
+        while not game_state.in_starter_battle do
+            skip_dialogue()
+        end
+        console.log("Entering Battle")
+        console.log(game_state.in_starter_battle)
+        local battle_state = 0
+        while game_state.in_starter_battle and battle_state == 0 do
+            press_sequence("B", 5)
+            console.log("Battle State: " .. mbyte(offset.battle_state))
+            battle_state = mbyte(offset.battle_state) --should set to 01
+        end
+        wait_frames(50)
+        mon = party[1]
+        local was_target = pokemon.log(mon)
+        if was_target then
+            pause_bot("Starter meets target specs!")
+        else
+            console.log("Starter was not a target, resetting...")
+            press_button("Power")
+        end
     end
 end
 
-function mode_random_encounters()
+function mode_random_encounters_running()
     console.log("Attempting to start a battle...")
 
     local tile_frames = frames_per_move() - 2
@@ -354,6 +374,17 @@ function mode_random_encounters()
     end
 
     release_button(dir2)
+
+    process_wild_encounter()
+end
+
+function mode_spin_to_win()
+    console.log("Attempting to start a battle... and Spinning!")
+    local home_x = offset.trainer_x
+    local home_z = offset.trainer_z
+    while not foe and not game_state.in_battle do
+        press_sequence("Up", "Left", "Down", "Right")
+    end
 
     process_wild_encounter()
 end

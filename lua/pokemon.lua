@@ -587,7 +587,7 @@ function pokemon.matches_ruleset(mon, target)
     end
     console.log(has_other_specs)
     console.log(not target.shiny)
-    if has_other_specs then --remove the "and not target.shiny" if you want to hunt for pokemon that still meet other target values and arent shiny
+    if has_other_specs and not target.shiny then --remove the "and not target.shiny" if you want to hunt for pokemon that still meet other target values and arent shiny
         console.log("Wild " .. mon.name .. " is a target!")
         return true
     else
