@@ -274,8 +274,8 @@ end
 function mode_starters(starter)                          --starters for platinum
     local selected_starter = mdword(0x2101DEC) + 0x203E8 -- 0: Turtwig, 1: Chimchar, 2: Piplup
     local starters_ready = selected_starter + 0x84       -- 0 before hand appears, A94D afterwards
-    console.log("selected_starter: " .. selected_starter)
-    console.log("starters_ready: " .. starters_ready)
+    --console.log("selected_starter: " .. selected_starter)
+    --console.log("starters_ready: " .. starters_ready)
     if not game_state.in_game then
         console.log("Waiting to reach overworld...")
 
@@ -290,6 +290,8 @@ function mode_starters(starter)                          --starters for platinum
 
     -- Open briefcase and skip through dialogue until starter select
     console.log("Skipping dialogue to briefcase")
+    local selected_starter = mdword(0x2101DEC) + 0x203E8 -- 0: Turtwig, 1: Chimchar, 2: Piplup
+    local starters_ready = selected_starter + 0x84       -- 0 before hand appears, A94D afterwards
 
     while not (mdword(starters_ready) > 0) do
         press_button("B")
@@ -332,12 +334,11 @@ function mode_starters(starter)                          --starters for platinum
         while not game_state.in_starter_battle do
             skip_dialogue()
         end
-        console.log("Entering Battle")
         console.log(game_state.in_starter_battle)
         local battle_state = 0
         while game_state.in_starter_battle and battle_state == 0 do
             press_sequence("B", 5)
-            console.log("Battle State: " .. mbyte(offset.battle_state))
+            --console.log("Battle State: " .. mbyte(offset.battle_state))
             battle_state = mbyte(offset.battle_state) --should set to 01
         end
         wait_frames(50)
@@ -347,6 +348,8 @@ function mode_starters(starter)                          --starters for platinum
             pause_bot("Starter meets target specs!")
         else
             console.log("Starter was not a target, resetting...")
+            selected_starter = 0
+            starters_ready = 0
             press_button("Power")
         end
     end
