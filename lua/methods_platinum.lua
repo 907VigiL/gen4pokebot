@@ -17,6 +17,6 @@ function update_pointers()
 	local mem_shift = mdword(0x21C0794)
 	offset.battle_state = mem_shift + 0x44878 --01 is FIGHT menu, 04 is Move Select, 08 is Bag, 0A is POkemon menu
 	offset.current_pokemon = mem_shift + 0x475B8
-
+	--gui.text(100, 100, offset.trainer_x)
 	--console.log(string.format("%04X", mword(offset.map_header)))
 end

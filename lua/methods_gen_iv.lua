@@ -12,7 +12,6 @@ function update_pointers()
     local mem_shift = mdword(0x21C0794)
     offset.battle_state = mem_shift + 0x44878
     -- console.log()
-    -- offset.trainer_x =
 
     --console.log(string.format("%08X", offset.battle_state))
 end
@@ -27,6 +26,7 @@ function save_game()
     wait_frames(20)
     release_button("X")
     console.log("Starting Map Check...")
+    -- SAVE button is at a different position before choosing starter
     if mword(offset.map_header) == 0156 then -- No dex (not a perfect fix)
         while mbyte(0x021C4C86) ~= 04 do
             press_sequence("Up", 10)
@@ -37,14 +37,6 @@ function save_game()
             press_sequence("Up", 10)
         end
     end
-    -- SAVE button is at a different position before choosing starter
-    --[[if #party == 0 then                         -- No starter, no dex
-        touch_screen_at(60, 93)
-    elseif mword(offset.map_header) == 391 then -- No dex (not a perfect fix)
-        touch_screen_at(188, 88)
-    else                                        -- Standard
-        touch_screen_at(60, 143)
-    end]]
     press_sequence("A", 10)
     console.log("Pressing A")
     hold_button("B")
@@ -81,6 +73,73 @@ function skip_nickname()
     save_game()
 end
 
+function check_status()
+    if #party == 0 or game_state.in_battle then -- Don't check party status if bot was started during a battle
+        return nil
+    end
+
+    -- Check how many valid move uses the lead has remaining
+    local lead_pp_sum = 0
+    for i = 1, #party[1].moves, 1 do
+        local pp = party[1].pp[i]
+        local power = party[1].moves[i].power
+        if pp ~= 0 and power ~= nil then
+            lead_pp_sum = lead_pp_sum + pp
+        end
+    end
+
+    if party[1].currentHP == 0 or (lead_pp_sum == 0 and config.battle_non_targets) then
+        console.log("Lead Pokemon can no longer battle...")
+        if config.cycle_lead_pokemon then
+            console.log("Finding a suitable replacement")
+        else
+            if config.mode_heal_loop then
+                go_to_pokecenter()
+            else
+                pause_bot("auto cycle off waiting for manual intervention")
+            end
+        end
+    end
+end
+
+function move_vertically(target)
+    local dz = target - game_state.trainer_z
+    local button = dz > 0 and "Down" or "Up"
+    while dz ~= 0 do
+        console.log("dz: " .. dz)
+        hold_button("B")
+        hold_button(button)
+        wait_frames(4)
+        release_button("B")
+        release_button(button)
+        dz = target - game_state.trainer_z
+        release_button("B")
+        --dz = target - game_state.trainer_z
+        button = dz > 0 and "Down" or "Up"
+        wait_frames(10)
+    end
+end
+
+function move_horizontally(target)
+    local dx = target - game_state.trainer_x
+    local button = dx > 0 and "Right" or "Left"
+    while dx ~= 0 do
+        console.log("dx: " .. dx)
+        hold_button("B")
+        hold_button(button)
+        wait_frames(4)
+        dx = target - game_state.trainer_x
+        button = dx > 0 and "Right" or "Left"
+        --wait_frames(2)
+    end
+    release_button("B")
+    release_button(button)
+end
+
+function go_to_pokecenter()
+
+end
+
 -----------------------
 -- BATTLE BOT ACTIONS
 -----------------------
@@ -98,21 +157,25 @@ function do_battle()
     if best_move then
         -- Press B until battle state has advanced
         local battle_state = 0
+        --console.log("Pokemon in memory: " .. offset.current_pokemon)
         while game_state.in_battle and battle_state == 0 do
             press_sequence("B", 5)
             battle_state = mbyte(offset.battle_state) --should set to 01
         end
+        local current_hp = mword(offset.current_pokemon + 0x4C)
+        local move1_pp = mbyte(offset.current_pokemon + 0x2C)
+        local move2_pp = mbyte(offset.current_pokemon + 0x2D)
+        local move3_pp = mbyte(offset.current_pokemon + 0x2E)
+        local move4_pp = mbyte(offset.current_pokemon + 0x2F)
 
-        console.log("Battle Menu State in loop: " .. battle_state)
-        console.log("My current pokemon HP: " .. mword(offset.current_pokemon + 0x4C))
-        if not game_state.in_battle then -- Battle over
-            --console.log("Current Party HP: " .. party[1].current_hp)
-            --console.log("Current For HP: " .. foe[1].current_hp)
-            --if party[1].current_hp == 0 or foe[1].current_hp == 0 then --if battle over
-            --touch_screen_at(125, 175) -- Run or keep old moves
-            --wait_frames(20)
+        --console.log("My current pokemon HP: " ..  mword(offset.current_pokemon + 0x4C))
+        console.log("Move1 pp: " .. move1_pp)
+        console.log("Move2 pp: " .. move2_pp)
+        console.log("Move3 pp: " .. move3_pp)
+        --.log("Updated pp1 in pokemon: " .. party[1].pp[1])
+        if not game_state.in_battle then                      -- Battle over
             return
-        elseif mword(offset.current_pokemon + 0x4C) == 0 then -- Fainted or learning new move
+        elseif current_hp == 0 or foe[1].current_hp == 0 then -- Fainted or learning new move
             console.log("Pokemon fainted or is learning new moves skipping text...")
             while game_state.in_battle do
                 wait_frames(400)
@@ -126,30 +189,28 @@ function do_battle()
             end
             return
         end
-
-        if best_move.power > 0 then
-            -- Manually decrement PP count
-            -- The game only updates this itself at the end of the battle
-            local pp_dec = 1
-            if foe[1].ability == "Pressure" then
-                pp_dec = 2
-            end
-
-            party[1].pp[best_move.index] = party[1].pp[best_move.index] - pp_dec
-
+        --checks if move has pp and is a damaging move
+        if (best_move.power > 0) then
             console.debug("Best move against foe is " ..
                 best_move.name .. " (Effective base power is " .. best_move.power .. ")")
             wait_frames(30)
             touch_screen_at(128, 90) -- FIGHT
             wait_frames(30)
-
+            console.log("Touching Screen at location: (" ..
+                (80 * (best_move.index - 1) % 2 + 1) .. ", " .. 50 * (((best_move.index - 1) // 2) + 1))
             touch_screen_at(80 * ((best_move.index - 1) % 2 + 1), 50 * (((best_move.index - 1) // 2) + 1)) -- Select move slot
+            console.log("Attacking now...")
             wait_frames(30)
+            party[1].pp[1] = move1_pp -- update moves pp for find_best_move function
+            party[1].pp[2] = move2_pp
+            party[1].pp[3] = move3_pp
+            party[1].pp[4] = move4_pp
+            --do_battle()
         else
             console.log("Lead Pokemon has no valid moves left to battle! Fleeing...")
 
             while game_state.in_battle do
-                touch_screen_at(125, 135) -- Run
+                touch_screen_at(125, 175) -- Run
                 wait_frames(5)
             end
         end
@@ -157,6 +218,36 @@ function do_battle()
     else
         -- Wait another frame for valid battle data
         wait_frames(1)
+    end
+end
+
+function catch_pokemon()
+    if config.auto_catch then
+        console.log("Attempting to catch pokemon now...")
+        local battle_state = 0
+        while game_state.in_battle and battle_state == 0 do
+            press_sequence("B", 5)
+            battle_state = mbyte(offset.battle_state) --should set to 01
+        end
+        ::retry::
+        wait_frames(100)
+        touch_screen_at(40, 170)
+        wait_frames(50)
+        touch_screen_at(190, 45)
+        wait_frames(20)
+        touch_screen_at(60, 30)
+        wait_frames(20)
+        touch_screen_at(100, 170)
+        wait_frames(750)
+        if mbyte(0x02101DF0) == 0x01 then
+            console.log("Pokemon caught!!!")
+            skip_nickname()
+        else
+            console.log("Failed catch trying again...")
+            goto retry
+        end
+    else
+        pause_bot("Wild Pokemon meets target specs!")
     end
 end
 
@@ -383,11 +474,21 @@ end
 
 function mode_spin_to_win()
     console.log("Attempting to start a battle... and Spinning!")
-    local home_x = offset.trainer_x
-    local home_z = offset.trainer_z
     while not foe and not game_state.in_battle do
         press_sequence("Up", "Left", "Down", "Right")
     end
 
     process_wild_encounter()
+end
+
+function mode_heal_loop()
+    --use spin to win then check status after every battle, if status bad return player to pokecenter to heal
+    for i = 1, 10, 1 do
+        move_horizontally(184)
+        move_vertically(843)
+        move_vertically(829)
+        move_horizontally(180)
+        --mode_spin_to_win()
+        --check_status()
+    end
 end

@@ -150,7 +150,8 @@ function get_game_state()
             trainer_x = mword(offset.trainer_x + 2),
             trainer_y = to_signed(mword(offset.trainer_y + 2)),
             trainer_z = mword(offset.trainer_z + 2),
-            in_battle = mbyte(offset.battle_indicator) == 0x41 and mbyte(offset.foe_count) > 0
+            in_battle = mbyte(offset.battle_indicator) == 0x41 and mbyte(offset.foe_count) > 0,
+            in_starter_battle = mbyte(offset.battle_indicator) == 0x41
         }
     else
         local in_game = (map ~= 0x0 and map <= MAP_HEADER_COUNT)
@@ -239,6 +240,7 @@ function process_frame()
     update_pointers()
     poll_dashboard_response()
     update_game_info()
+    gui.text(100, 100, game_state.trainer_x .. ", " .. game_state.trainer_y .. ", " .. game_state.trainer_z)
 end
 
 -----------------------
@@ -289,7 +291,7 @@ while true do
 
             -- Cycle to next enabled starter
             starter = (starter + 1) % 3
-
+            --console.log("Selected Starters to pick from: " .. starter)
             while not config["starter" .. tostring(starter)] do
                 starter = (starter + 1) % 3
             end
